@@ -1,0 +1,2 @@
+qz.threadPool.corePoolSize: 20
+qz.trigger.repeatInterval: 1000

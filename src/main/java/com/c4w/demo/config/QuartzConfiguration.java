@@ -5,8 +5,11 @@ import com.c4w.demo.job.MyLogJob;
 import org.quartz.JobDetail;
 import org.quartz.SimpleTrigger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.quartz.JobDetailFactoryBean;
 import org.springframework.scheduling.quartz.SchedulerFactoryBean;
 import org.springframework.scheduling.quartz.SimpleTriggerFactoryBean;
@@ -14,8 +17,24 @@ import org.springframework.scheduling.quartz.SimpleTriggerFactoryBean;
 @Configuration
 public class QuartzConfiguration {
 
+
+    @Value("${qz.threadPool.corePoolSize}")
+    private int fixedThreadPoolSize;
+
+    @Value("${qz.trigger.repeatInterval}")
+    private long repeatInterval;
+
     @Autowired
     private MyJobFactory jobFactory;
+
+    @Bean
+    public TaskExecutor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(fixedThreadPoolSize);
+        executor.setThreadNamePrefix("qz-exec-");
+        executor.initialize();
+        return executor;
+    }
 
     @Bean
     public JobDetailFactoryBean jobDetail() {
@@ -30,7 +49,8 @@ public class QuartzConfiguration {
         SimpleTriggerFactoryBean trigger = new SimpleTriggerFactoryBean();
         trigger.setJobDetail(jobDetail);
         trigger.setStartDelay(0L);
-        trigger.setRepeatInterval(1000L); // every 1 second
+        //trigger.setStartTime(); // set start Date time if needed from properties
+        trigger.setRepeatInterval(repeatInterval); // every 1 second
         trigger.setRepeatCount(SimpleTrigger.REPEAT_INDEFINITELY);
         return trigger;
     }
@@ -40,6 +60,7 @@ public class QuartzConfiguration {
         SchedulerFactoryBean schedulerFactory = new SchedulerFactoryBean();
         schedulerFactory.setJobFactory(jobFactory); // custom SpringJobFactory
         schedulerFactory.setTriggers(trigger.getObject()); // trigger
+        schedulerFactory.setTaskExecutor(taskExecutor());
         return schedulerFactory;
     }
 }
